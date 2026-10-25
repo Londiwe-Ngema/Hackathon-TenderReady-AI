@@ -58,7 +58,7 @@ async function transcribeBatch(source: PDFDocument, pages: number[]): Promise<Pa
   const mapping = pages.map((p, i) => `PDF page ${i + 1} = original page ${p}`).join("; ");
   const res = await bedrock.send(
     new InvokeModelCommand({
-      modelId: env.modelId,
+      modelId: env.bedrockModelId,
       contentType: "application/json",
       accept: "application/json",
       body: JSON.stringify({
@@ -85,25 +85,43 @@ async function transcribeBatch(source: PDFDocument, pages: number[]): Promise<Pa
   return parseTranscription((body.content ?? []).map((c) => c.text ?? "").join(""), pages);
 }
 
+export interface ExtractOptions {
+  /** Transcribe image-only pages with Claude on Bedrock. When false, those pages are reported as unreadable. */
+  transcribeScans: boolean;
+}
+
 /**
  * Extracts page-tagged text from a tender PDF. Digital pages use the PDF text layer; pages without
- * a text layer (scans) are transcribed by Claude on Bedrock, which reads the page images.
+ * a text layer (scans) are transcribed by Claude on Bedrock when available.
  */
-export async function extractPdf(bytes: Uint8Array): Promise<ExtractedDocument & { ocrPages: number[] }> {
+export async function extractPdf(
+  bytes: Uint8Array,
+  { transcribeScans }: ExtractOptions,
+): Promise<ExtractedDocument & { ocrPages: number[]; unreadablePages: number[] }> {
   const pages = await extractTextLayer(bytes.slice());
-  const toOcr = scannedPages(pages);
-  if (toOcr.length > MAX_OCR_PAGES) {
+  const scans = scannedPages(pages);
+
+  if (!transcribeScans) {
+    if (scans.length > pages.length / 2) {
+      throw new UserFacingError(
+        "This looks like a scanned PDF (most pages are images). Scanned tenders aren't supported in the current AI mode. Please upload a text-based PDF.",
+      );
+    }
+    return { pageCount: pages.length, pages, ocrPages: [], unreadablePages: scans };
+  }
+
+  if (scans.length > MAX_OCR_PAGES) {
     throw new UserFacingError(
-      `This scanned PDF has ${toOcr.length} image-only pages; the limit is ${MAX_OCR_PAGES}. Please upload a text-based copy or split the document.`,
+      `This scanned PDF has ${scans.length} image-only pages; the limit is ${MAX_OCR_PAGES}. Please upload a text-based copy or split the document.`,
     );
   }
-  if (toOcr.length) {
+  if (scans.length) {
     const source = await PDFDocument.load(bytes, { ignoreEncryption: true });
-    const batches = batchPages(toOcr);
+    const batches = batchPages(scans);
     for (let i = 0; i < batches.length; i += OCR_CONCURRENCY) {
       const results = await Promise.all(batches.slice(i, i + OCR_CONCURRENCY).map((b) => transcribeBatch(source, b)));
       for (const r of results.flat()) pages[r.page - 1] = r;
     }
   }
-  return { pageCount: pages.length, pages, ocrPages: toOcr };
+  return { pageCount: pages.length, pages, ocrPages: scans, unreadablePages: [] };
 }

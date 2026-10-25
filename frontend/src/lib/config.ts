@@ -3,6 +3,8 @@ export interface RuntimeConfig {
   apiUrl: string;
   userPoolId: string;
   userPoolClientId: string;
+  /** Which AI backend the deployment uses, e.g. "Cloudflare Workers AI (glm-4.7-flash)". */
+  aiLabel?: string;
 }
 
 const DEMO_KEY = "tenderready.demo";
@@ -60,4 +62,9 @@ export function exitDemo(): void {
     /* ignore */
   }
   window.location.href = "/?demo=0";
+}
+
+/** Label for the AI backend shown next to AI output. */
+export function aiLabel(): string {
+  return demoMode ? "simulated demo data" : (config?.aiLabel ?? "AI");
 }

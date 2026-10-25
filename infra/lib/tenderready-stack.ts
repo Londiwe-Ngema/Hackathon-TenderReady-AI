@@ -1,5 +1,6 @@
 import { CfnOutput, Stack, Tags, type StackProps } from "aws-cdk-lib";
 import { Construct } from "constructs";
+import { aiLabel, type AiConfig } from "./ai-config";
 import { Api } from "./api";
 import { Auth } from "./auth";
 import { Data } from "./data";
@@ -7,7 +8,7 @@ import { Pipeline } from "./pipeline";
 import { Web } from "./web";
 
 export interface TenderReadyStackProps extends StackProps {
-  modelId: string;
+  ai: AiConfig;
 }
 
 export class TenderReadyStack extends Stack {
@@ -20,13 +21,13 @@ export class TenderReadyStack extends Stack {
 
     const auth = new Auth(this, "Auth");
     const data = new Data(this, "Data", { allowedOrigins });
-    new Pipeline(this, "Pipeline", { bucket: data.bucket, table: data.table, modelId: props.modelId });
+    new Pipeline(this, "Pipeline", { bucket: data.bucket, table: data.table, ai: props.ai });
     const api = new Api(this, "Api", {
       bucket: data.bucket,
       table: data.table,
       userPool: auth.userPool,
       userPoolClient: auth.client,
-      modelId: props.modelId,
+      ai: props.ai,
       allowedOrigins,
     });
 
@@ -35,6 +36,7 @@ export class TenderReadyStack extends Stack {
       apiUrl: api.httpApi.apiEndpoint,
       userPoolId: auth.userPool.userPoolId,
       userPoolClientId: auth.client.userPoolClientId,
+      aiLabel: aiLabel(props.ai),
     };
     web.deploy(config);
 

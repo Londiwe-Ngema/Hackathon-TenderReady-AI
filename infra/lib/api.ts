@@ -7,7 +7,7 @@ import * as dynamodb from "aws-cdk-lib/aws-dynamodb";
 import * as s3 from "aws-cdk-lib/aws-s3";
 import { Construct } from "constructs";
 import { ROUTES } from "../../backend/src/api/routes";
-import { grantBedrockInvoke } from "./bedrock";
+import { aiEnvironment, grantAi, type AiConfig } from "./ai-config";
 import { TsFunction, backendEntry } from "./fn";
 
 export interface ApiProps {
@@ -15,7 +15,7 @@ export interface ApiProps {
   table: dynamodb.TableV2;
   userPool: cognito.UserPool;
   userPoolClient: cognito.UserPoolClient;
-  modelId: string;
+  ai: AiConfig;
   allowedOrigins: string[];
 }
 
@@ -33,13 +33,14 @@ export class Api extends Construct {
       environment: {
         TABLE_NAME: props.table.tableName,
         BUCKET_NAME: props.bucket.bucketName,
-        BEDROCK_MODEL_ID: props.modelId,
+        ...aiEnvironment(props.ai),
+        AI_TIMEOUT_MS: "25000", // answer inside API Gateway's 30 s integration limit
       },
     });
     props.table.grantReadWriteData(fn);
     props.bucket.grantReadWrite(fn); // presigned PUT/GET of tender PDFs, read extracted text
     props.bucket.grantDelete(fn);
-    grantBedrockInvoke(fn, Stack.of(this), props.modelId);
+    grantAi(fn, Stack.of(this), props.ai);
 
     this.httpApi = new apigw.HttpApi(this, "HttpApi", {
       apiName: "tenderready",

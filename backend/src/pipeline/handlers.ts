@@ -1,6 +1,7 @@
 import { GetObjectCommand } from "@aws-sdk/client-s3";
 import { s3 } from "../lib/aws";
-import { analyseTender } from "../lib/bedrock";
+import { analyseTender } from "../lib/ai";
+import { llm } from "../lib/llm";
 import * as db from "../lib/db";
 import { loadExtracted, saveExtracted } from "../lib/docstore";
 import { env } from "../lib/env";
@@ -33,7 +34,7 @@ export async function start(event: { detail: { object: { key: string } } }): Pro
 
 /**
  * Step 2: extract page-tagged text. Digital pages use the PDF text layer; scanned pages are
- * transcribed by Claude on Bedrock. (Amazon Textract is not offered in eu-north-1.)
+ * transcribed by Claude on Bedrock when that provider is active. (Amazon Textract is not offered in eu-north-1.)
  */
 export async function extract(state: PipelineState): Promise<PipelineState> {
   const bytes = await readPdf(state.key);
@@ -43,7 +44,7 @@ export async function extract(state: PipelineState): Promise<PipelineState> {
 
   let doc;
   try {
-    doc = await extractPdf(bytes);
+    doc = await extractPdf(bytes, { transcribeScans: llm().readsScannedPdfs });
   } catch (err) {
     if (err instanceof UserFacingError) throw err;
     const name = (err as Error).name;
@@ -53,7 +54,7 @@ export async function extract(state: PipelineState): Promise<PipelineState> {
   }
 
   const chars = doc.pages.reduce((n, p) => n + p.text.length, 0);
-  log("pipeline.extracted", state, { pages: doc.pageCount, ocrPages: doc.ocrPages.length, chars });
+  log("pipeline.extracted", state, { pages: doc.pageCount, ocrPages: doc.ocrPages.length, unreadable: doc.unreadablePages.length, chars });
   if (chars < 200) {
     throw new UserFacingError("Very little text could be read from this PDF. It may be blank or of very poor scan quality.");
   }
@@ -69,7 +70,7 @@ export async function analyse(state: PipelineState): Promise<PipelineState> {
   await db.saveAnalysis(state.hubId, state.tenderId, {
     ...result,
     closingDate: result.summary.closingDateTime,
-    modelId: env.modelId,
+    modelId: `${llm().name}:${llm().modelId}`,
   });
   log("pipeline.analysed", state, { checklist: result.checklist.length, risks: result.risks.length });
   return state;
@@ -90,6 +91,7 @@ export async function fail(input: {
     if (cause.errorType === "UserFacingError" && cause.errorMessage) reason = cause.errorMessage;
     else if (input.error?.Error === "States.Timeout") reason = "Analysis took too long. Large tenders may need to be split.";
     else if (cause.errorType === "AccessDeniedException") reason = "The AI service is not available for this account yet. Please try again later.";
+    else if (cause.errorType === "ThrottlingException") reason = "The AI service is busy. Please try again in a few minutes.";
   } catch {
     /* keep default reason */
   }

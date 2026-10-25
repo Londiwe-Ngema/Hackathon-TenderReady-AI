@@ -11,7 +11,7 @@ import type {
   UploadResponse,
 } from "@tenderready/shared";
 import { s3 } from "../lib/aws";
-import { askTender, type ChatTurn } from "../lib/bedrock";
+import { askTender, type ChatTurn } from "../lib/ai";
 import * as db from "../lib/db";
 import { loadExtracted } from "../lib/docstore";
 import { MAX_UPLOAD_BYTES, env } from "../lib/env";

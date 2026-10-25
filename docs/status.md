@@ -12,8 +12,14 @@ Status key: ✅ completed · 🟡 simulated or partly done · ⏳ outstanding.
 | Pipeline | S3 → EventBridge → Step Functions: PDF validation, page text from the PDF text layer (pdf.js), Claude transcription of scanned pages, Bedrock structured analysis, FAILED handling with readable reasons. Textract was replaced because it is not offered in eu-north-1, the only region the organisation allows. | `backend/src/pipeline`, `infra/lib/pipeline.ts` |
 | AI | Forced tool-use JSON schema for analysis, South African procurement prompt, grounding rules, schema normalisation, long-document chunk and merge, document-grounded Q&A with validated `[p.N]` citations | `backend/src/lib/{prompts,analysis,bedrock,citations}.ts` |
 | Infrastructure as code | One CDK stack in eu-north-1: S3 (private, SSE, TLS-only, 90-day expiry), DynamoDB, Cognito, HTTP API, Lambdas (Node 22 arm64), Step Functions, EventBridge, CloudFront + OAC, CloudWatch alarm, least-privilege IAM | `infra/` |
-| Tests | 15 backend + 3 frontend unit tests: PDF text extraction (real generated PDF), scan detection, transcription parsing, chunking, analysis normalisation and merge, citations, rollups, key parsing, auth/routing. An end-to-end UI journey was run in headless Chromium on desktop and mobile with 0 console errors. | `backend/test` |
+| Tests | 20 backend + 3 frontend unit tests: AI provider (Workers AI request shape, schema fallback, daily-limit and throttling errors), PDF text extraction (real generated PDF), scan detection, transcription parsing, chunking, analysis normalisation and merge, citations, rollups, key parsing, auth/routing. An end-to-end UI journey was run in headless Chromium on desktop and mobile with 0 console errors. | `backend/test` |
+| CI/CD | GitHub Actions: CI on pull requests; Deploy on `main` (CI, then `cdk deploy` to eu-north-1) using a deploy-only IAM user | `.github/workflows` |
 | Docs | Architecture diagram, demo script, this status page | `docs/` |
+
+## Changed for the AWS account limits
+
+- **AI backend is Cloudflare Workers AI for now.** The hackathon account's Bedrock daily token quota is 0 for every model (Claude 5.x reports "not available for this account"). The provider switch (`aiProvider` in `infra/cdk.json`) moves back to Bedrock with one line. The UI states which AI produced each result.
+- **No Textract.** The organisation only allows eu-north-1, where Textract isn't offered. Text comes from the PDF text layer.
 
 ## Simulated 🟡 (clearly labelled in the UI)
 
@@ -22,7 +28,7 @@ Status key: ✅ completed · 🟡 simulated or partly done · ⏳ outstanding.
 
 ## Outstanding ⏳
 
-1. **Live AI on AWS.** The stack is deployed to eu-north-1, but Bedrock calls are blocked until AWS finishes verifying the new account. Once that clears, check that the organisation's region policy allows the EU cross-region inference profile, then test with a real tender.
+1. **Bedrock quota.** Ask the organisers to raise the Bedrock daily token quota (and enable Claude 5.x) for account 753695657671, then set `aiProvider` to `bedrock`. That also brings back scanned-PDF support.
 2. Test on a long real tender: accuracy of dates and requirements, processing time and cost per document.
 3. Bedrock Guardrails (PII and denied topics) on the Q&A route.
 4. Official AWS Pricing Calculator export (see the proposal, section 6.1).
