@@ -1,0 +1,91 @@
+name: Deploy
+
+# Deploys the CDK stack (backend + frontend) to eu-north-1 after CI passes on main.
+# Requires repository secrets AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY (optionally AWS_SESSION_TOKEN)
+# for an identity allowed to assume the CDK bootstrap roles. GitHub OIDC is not possible in this
+# AWS account: the organisation's SCP denies creating IAM OIDC providers.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  AWS_REGION: eu-north-1
+
+jobs:
+  ci:
+    uses: ./.github/workflows/ci.yml
+
+  deploy:
+    name: cdk deploy
+    needs: ci
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    environment:
+      name: production
+      url: ${{ steps.outputs.outputs.site_url }}
+    steps:
+      - name: Check AWS credentials are configured
+        id: creds
+        env:
+          KEY: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        run: |
+          if [ -z "$KEY" ]; then
+            echo "::warning::AWS credentials are not configured (secrets AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY). Skipping deploy."
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/checkout@v4
+        if: steps.creds.outputs.configured == 'true'
+
+      - uses: pnpm/action-setup@v4
+        if: steps.creds.outputs.configured == 'true'
+
+      - uses: actions/setup-node@v4
+        if: steps.creds.outputs.configured == 'true'
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+        if: steps.creds.outputs.configured == 'true'
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        if: steps.creds.outputs.configured == 'true'
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Build frontend
+        if: steps.creds.outputs.configured == 'true'
+        run: pnpm --filter frontend build
+
+      - name: Deploy stack
+        if: steps.creds.outputs.configured == 'true'
+        run: pnpm --filter @tenderready/infra exec cdk deploy TenderReady --require-approval never --outputs-file cdk-outputs.json
+
+      - name: Publish outputs
+        id: outputs
+        if: steps.creds.outputs.configured == 'true'
+        run: |
+          SITE=$(jq -r '.TenderReady.SiteUrl' infra/cdk-outputs.json)
+          echo "site_url=$SITE" >> "$GITHUB_OUTPUT"
+          {
+            echo "### Deployed TenderReady AI"
+            echo ""
+            echo "| Output | Value |"
+            echo "|---|---|"
+            jq -r '.TenderReady | to_entries[] | "| \(.key) | \(.value) |"' infra/cdk-outputs.json
+          } >> "$GITHUB_STEP_SUMMARY"

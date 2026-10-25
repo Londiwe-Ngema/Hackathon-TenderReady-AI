@@ -1,3 +1,10 @@
 
 # direnv (local AWS profile)
 .envrc
+node_modules/
+dist/
+cdk.out/
+*.tsbuildinfo
+.env*.local
+samples/
+infra/cdk-outputs.json

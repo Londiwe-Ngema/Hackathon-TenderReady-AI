@@ -1,0 +1,8 @@
+{
+  "app": "npx tsx bin/tenderready.ts",
+  "context": {
+    "region": "eu-north-1",
+    "modelId": "eu.anthropic.claude-sonnet-5-5",
+    "@aws-cdk/aws-lambda-nodejs:useLatestRuntimeVersion": true
+  }
+}

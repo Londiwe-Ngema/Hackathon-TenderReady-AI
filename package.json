@@ -1,0 +1,17 @@
+{
+  "name": "tenderready",
+  "private": true,
+  "scripts": {
+    "build": "pnpm -r build",
+    "typecheck": "pnpm -r typecheck",
+    "test": "pnpm -r test",
+    "dev": "pnpm --filter frontend dev",
+    "deploy": "pnpm --filter frontend build && pnpm --filter infra cdk deploy --all --require-approval never"
+  },
+  "packageManager": "pnpm@10.0.0",
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild"
+    ]
+  }
+}
