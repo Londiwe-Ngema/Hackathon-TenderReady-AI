@@ -10,7 +10,7 @@ vi.mock("@aws-sdk/client-ssm", () => ({
 }));
 
 import { buildTurns, extractJson } from "../src/lib/llm/messages";
-import { workersAiProvider } from "../src/lib/llm/workers-ai";
+import { modelOptions, workersAiProvider } from "../src/lib/llm/workers-ai";
 
 describe("buildTurns", () => {
   it("starts with a user turn, merges repeats and ends with the question", () => {
@@ -38,6 +38,14 @@ describe("extractJson", () => {
     expect(extractJson('```json\n{"a":2}\n```')).toEqual({ a: 2 });
     expect(extractJson('Here you go: {"a":3} hope that helps')).toEqual({ a: 3 });
     expect(() => extractJson("no json here")).toThrow();
+  });
+});
+
+describe("modelOptions", () => {
+  it("keeps reasoning short per model family", () => {
+    expect(modelOptions("@cf/zai-org/glm-4.7-flash")).toEqual({ chat_template_kwargs: { enable_thinking: false } });
+    expect(modelOptions("@cf/openai/gpt-oss-120b")).toEqual({ reasoning_effort: "low" });
+    expect(modelOptions("@cf/mistralai/mistral-small-3.1-24b-instruct")).toEqual({});
   });
 });
 

@@ -73,6 +73,13 @@ function outputText(res: CompletionResponse): string {
   return (msg?.content ?? "").trim();
 }
 
+/** Per-model request options: keep reasoning short so answers fit the API's time limit and the free allowance. */
+export function modelOptions(modelId: string): Record<string, unknown> {
+  if (modelId.includes("gpt-oss")) return { reasoning_effort: "low" };
+  if (modelId.includes("glm")) return { chat_template_kwargs: { enable_thinking: false } };
+  return {};
+}
+
 /**
  * Cloudflare Workers AI through its OpenAI-compatible REST endpoint. Used while the hackathon AWS
  * account has no Bedrock quota. Text-only: scanned PDF pages cannot be transcribed with this provider.
@@ -92,6 +99,7 @@ export function workersAiProvider(modelId: string): LlmProvider {
 
     async structured(req: StructuredRequest) {
       const base = {
+        ...modelOptions(modelId),
         model: modelId,
         max_tokens: req.maxTokens,
         temperature: 0,
@@ -124,6 +132,7 @@ export function workersAiProvider(modelId: string): LlmProvider {
 
     async chat(req: ChatRequest) {
       const res = await complete({
+        ...modelOptions(modelId),
         model: modelId,
         max_tokens: req.maxTokens,
         temperature: req.temperature,
