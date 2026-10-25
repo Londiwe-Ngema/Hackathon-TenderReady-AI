@@ -8,7 +8,7 @@ import {
 
 export const MAX_CHECKLIST_ITEMS = 40;
 export const MAX_RISKS = 12;
-const MAX_QUOTE = 200;
+const MAX_QUOTE = 120;
 
 const nullableString = { type: ["string", "null"] };
 const pages = { type: "array", items: { type: "integer" } };
@@ -73,7 +73,7 @@ const CHECKLIST_ITEM_SCHEMA = {
   required: ["category", "requirement", "mandatory", "sourcePages", "sourceQuote", "origin"],
   properties: {
     category: { type: "string", enum: [...CHECKLIST_CATEGORIES] },
-    requirement: { type: "string", maxLength: 250 },
+    requirement: { type: "string", maxLength: 160 },
     mandatory: { type: "boolean" },
     sourcePages: pages,
     sourceQuote: quote,

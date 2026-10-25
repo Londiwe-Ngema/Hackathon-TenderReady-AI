@@ -75,3 +75,23 @@ describe("analyseTender", () => {
     vi.doUnmock("../src/lib/llm");
   });
 });
+
+describe("pickPart", async () => {
+  const { ANALYSIS_PARTS } = await import("../src/lib/analysis");
+  const { pickPart } = await import("../src/lib/ai");
+  const [summary, checklist] = ANALYSIS_PARTS;
+  const items = [{ requirement: "CSD" }];
+
+  it("accepts the requested key, a nested schema-name wrapper, a bare array or another array key", () => {
+    expect(pickPart({ checklist: items }, checklist)).toEqual(items);
+    expect(pickPart({ record_compliance_checklist: { checklist: items } }, checklist)).toEqual(items);
+    expect(pickPart(items, checklist)).toEqual(items);
+    expect(pickPart({ items }, checklist)).toEqual(items);
+  });
+
+  it("accepts summary fields at the top level or wrapped", () => {
+    expect(pickPart({ title: "T", overview: "o" }, summary)).toEqual({ title: "T", overview: "o" });
+    expect(pickPart({ tender_summary: { title: "T" } }, summary)).toEqual({ title: "T" });
+    expect(pickPart({ nothing: 1 }, checklist)).toBeUndefined();
+  });
+});
