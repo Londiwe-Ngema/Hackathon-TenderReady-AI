@@ -47,12 +47,15 @@ export class Pipeline extends Construct {
 
     const throttling = ["ThrottlingException", "ServiceUnavailableException", "ServiceQuotaExceededException", "ModelNotReadyException"];
     const invoke = (name: string, f: TsFunction) =>
-      new tasks.LambdaInvoke(this, name, { lambdaFunction: f, payloadResponseOnly: true }).addRetry({
-        errors: throttling,
-        interval: Duration.seconds(10),
-        maxAttempts: 4,
-        backoffRate: 2,
-      });
+      new tasks.LambdaInvoke(this, name, { lambdaFunction: f, payloadResponseOnly: true })
+        .addRetry({
+          errors: throttling,
+          interval: Duration.seconds(10),
+          maxAttempts: 4,
+          backoffRate: 2,
+        })
+        // The model provider gave up on a long generation; one more attempt usually succeeds.
+        .addRetry({ errors: ["ModelTimeoutError"], interval: Duration.seconds(5), maxAttempts: 1 });
 
     const failed = new sfn.Fail(this, "AnalysisFailed");
     const markFailed = new tasks.LambdaInvoke(this, "Mark tender FAILED", { lambdaFunction: failFn, payloadResponseOnly: true, resultPath: sfn.JsonPath.DISCARD }).next(failed);

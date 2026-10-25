@@ -1,7 +1,7 @@
 import { GetParameterCommand, SSMClient } from "@aws-sdk/client-ssm";
 import { env } from "../env";
 import { UserFacingError } from "../errors";
-import { extractJson, wrapDocument } from "./messages";
+import { extractJson, salvageTruncatedJson, wrapDocument } from "./messages";
 import type { ChatMessage, ChatRequest, LlmProvider, StructuredRequest } from "./types";
 
 const ssm = new SSMClient({});
@@ -29,7 +29,14 @@ class WorkersAiError extends Error {
   ) {
     super(message);
     // Step Functions retries ThrottlingException with backoff.
-    this.name = status === 429 ? "ThrottlingException" : status >= 500 ? "ServiceUnavailableException" : "WorkersAiError";
+    this.name =
+      status === 429
+        ? "ThrottlingException"
+        : status === 408
+          ? "ModelTimeoutError" // Cloudflare stopped a long generation (error 3046); retried once by Step Functions
+          : status >= 500
+            ? "ServiceUnavailableException"
+            : "WorkersAiError";
   }
 }
 
@@ -104,29 +111,29 @@ export function workersAiProvider(modelId: string): LlmProvider {
         max_tokens: req.maxTokens,
         temperature: 0,
       };
-      const prompt = `${req.instruction}\nRespond with a single JSON object that matches the "${req.schemaName}" JSON schema. Output JSON only.`;
+      // Plain JSON mode with the schema in the prompt. Strict json_schema (guided decoding) made the model
+      // pad answers with endless whitespace until it hit the output limit on long tenders.
+      const prompt = `${req.instruction}\nRespond with a single JSON object that matches this JSON schema ("${req.schemaName}"). Output JSON only, no prose.\n${JSON.stringify(req.schema)}`;
+      const msgs = messages(req.system, req.document, [{ role: "user", text: prompt }]);
       let res: CompletionResponse;
       try {
-        res = await complete({
-          ...base,
-          messages: messages(req.system, req.document, [{ role: "user", text: prompt }]),
-          response_format: { type: "json_schema", json_schema: { name: req.schemaName, schema: req.schema } },
-        });
+        res = await complete({ ...base, messages: msgs, response_format: { type: "json_object" } });
       } catch (err) {
-        // Some models reject complex schemas; fall back to plain JSON mode with the schema in the prompt.
+        // Models without JSON mode: ask without a format constraint and parse the JSON out of the text.
         if (!(err instanceof WorkersAiError) || err.status !== 400) throw err;
-        console.warn(JSON.stringify({ msg: "workers-ai.schema-fallback", detail: err.message.slice(0, 200) }));
-        res = await complete({
-          ...base,
-          messages: messages(req.system, req.document, [
-            { role: "user", text: `${prompt}\n\nJSON schema:\n${JSON.stringify(req.schema)}` },
-          ]),
-          response_format: { type: "json_object" },
-        });
+        console.warn(JSON.stringify({ msg: "workers-ai.json-mode-fallback", detail: err.message.slice(0, 200) }));
+        res = await complete({ ...base, messages: msgs });
       }
       console.log(JSON.stringify({ msg: "llm.structured", provider: "workers-ai", model: modelId, usage: res.usage, finish: res.choices?.[0]?.finish_reason }));
       const text = outputText(res);
-      if (!text) throw new Error(`Model returned no content (finish_reason=${res.choices?.[0]?.finish_reason})`);
+      const finish = res.choices?.[0]?.finish_reason;
+      if (!text) throw new Error(`Model returned no content (finish_reason=${finish})`);
+      if (finish === "length") {
+        // Output limit reached: keep the complete items rather than failing the whole tender.
+        const salvaged = salvageTruncatedJson(text);
+        console.warn(JSON.stringify({ msg: "workers-ai.truncated", schema: req.schemaName, salvaged: salvaged !== undefined }));
+        if (salvaged !== undefined) return salvaged;
+      }
       return extractJson(text);
     },
 
