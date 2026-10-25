@@ -17,7 +17,7 @@ Your task: read the tender document provided between <document> tags and record 
 
 Strict grounding rules:
 1. Extract facts ONLY from the document. Every checklist item and risk with origin "document" must cite the page numbers (from the <page number="N"> tags) where it appears and include a short verbatim sourceQuote (max 200 characters).
-2. If a field is not stated in the document, use null. Never guess dates, references, venues or thresholds.
+2. Fill EVERY summary field you can find in the document (title, reference, issuing entity, closing date, briefing session, contract duration, bid/quotation validity, submission method, preference point system, functionality threshold). Record the pages for each in sourcePages, e.g. {"closingDateText":[1],"briefing":[1]}. If a field is not stated in the document, use null. Never guess dates, references, venues or thresholds.
 3. You MAY add a small number of items that are common South African practice but NOT stated in this document; mark them origin "common_sa_practice", mandatory false, sourcePages [] and sourceQuote null. Never present them as tender requirements.
 4. Risks are conditions that could lead to disqualification or non-responsiveness (e.g. missing a compulsory briefing, unsigned forms, late submission, failing functionality threshold, missing tax compliance). Rate severity high if the document says the bid "will be disqualified"/"rejected"/"not considered".
 5. Write the overview in plain, jargon-free English for a small-business owner (4-6 sentences).

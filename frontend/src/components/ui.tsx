@@ -1,6 +1,7 @@
 import type { TenderStatus } from "@tenderready/shared";
 import { AlertTriangle, Bot, FileText, Loader2, X } from "lucide-react";
 import { useEffect, type ReactNode } from "react";
+import { aiLabel } from "../lib/config";
 import { cx } from "../lib/format";
 
 export function Logo({ light = false, size = "md" }: { light?: boolean; size?: "md" | "lg" }) {
@@ -68,7 +69,7 @@ export function AiNotice({ compact = false }: { compact?: boolean }) {
       <Bot className="mt-0.5 h-4 w-4 shrink-0" />
       <p>
         <strong>AI-generated. Verify against the original tender document.</strong> TenderReady supports bid preparation. It does not
-        guarantee eligibility, compliance or award.
+        guarantee eligibility, compliance or award. <span className="opacity-75">Generated with {aiLabel()}.</span>
       </p>
     </div>
   );

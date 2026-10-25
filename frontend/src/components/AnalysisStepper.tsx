@@ -1,16 +1,18 @@
 import type { TenderStatus } from "@tenderready/shared";
 import { Check, Loader2 } from "lucide-react";
+import { aiLabel } from "../lib/config";
 import { cx } from "../lib/format";
 
-const STEPS: Array<{ label: string; detail: string; statuses: TenderStatus[] }> = [
+const steps = (): Array<{ label: string; detail: string; statuses: TenderStatus[] }> => [
   { label: "Upload", detail: "PDF stored in private, encrypted S3 storage", statuses: ["UPLOADING"] },
-  { label: "Text extraction", detail: "Text read from the PDF; scanned pages are transcribed by Claude on Amazon Bedrock", statuses: ["UPLOADED", "EXTRACTING"] },
-  { label: "AI analysis", detail: "Amazon Bedrock identifies requirements, dates and risks", statuses: ["ANALYSING"] },
+  { label: "Text extraction", detail: "Text read page by page from the PDF", statuses: ["UPLOADED", "EXTRACTING"] },
+  { label: "AI analysis", detail: `${aiLabel()} identifies requirements, dates and risks`, statuses: ["ANALYSING"] },
   { label: "Summary & checklist", detail: "Results saved and ready to review", statuses: ["READY"] },
 ];
 
 /** Progress indicator driven by the real backend pipeline status. */
 export function AnalysisStepper({ status, pageCount }: { status: TenderStatus; pageCount?: number }) {
+  const STEPS = steps();
   const current = STEPS.findIndex((s) => s.statuses.includes(status));
   return (
     <div className="card p-6">

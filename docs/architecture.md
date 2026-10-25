@@ -2,6 +2,8 @@
 
 TenderReady AI is a digital compliance officer for **SMME hubs, incubators and business support centres**. A hub advisor manages many SMME clients. For each client, the advisor uploads tender or RFQ PDFs and gets back a plain-language summary, a compliance checklist, a list of disqualification risks and document-grounded Q&A. Everything is deployed as a single AWS CDK stack (`infra/`) in **eu-north-1 (Stockholm)**. The hackathon AWS organisation only permits that region. Amazon Textract is not offered in eu-north-1, so text extraction runs inside Lambda: digital pages are read from the PDF text layer with pdf.js, and scanned pages are transcribed by Claude on Bedrock.
 
+> **Current AI backend: Cloudflare Workers AI (`@cf/zai-org/glm-4.7-flash`).** The hackathon account's Amazon Bedrock quota is 0 tokens per day for every model, so the Lambdas call Workers AI's OpenAI-compatible REST API instead. The token is stored in AWS SSM Parameter Store. The code has a provider switch (`aiProvider` in `infra/cdk.json`), so moving back to Bedrock once the quota is raised is a one-line change. Everything else stays on AWS. In Workers AI mode, scanned PDFs are not supported; text-based PDFs are.
+
 ```mermaid
 flowchart LR
   subgraph Browser["Hub advisor (browser, desktop or mobile)"]
@@ -16,7 +18,9 @@ flowchart LR
   ApiFn <--> DDB[("Amazon DynamoDB<br/>single table: hubs, clients, tenders, checklist state")]
   ApiFn -- "presigned PUT/GET" --> TenderS3[("S3: tenders bucket<br/>private, SSE, TLS-only, 90-day expiry")]
   SPA -- "PDF upload via presigned URL" --> TenderS3
-  ApiFn -- "Ask TenderReady (Converse)" --> Bedrock["Amazon Bedrock<br/>Claude (eu inference profile)"]
+  ApiFn -- "Ask TenderReady" --> AI{{"AI provider switch"}}
+  AI -- "current" --> CFAI["Cloudflare Workers AI<br/>glm-4.7-flash (token in SSM)"]
+  AI -. "when quota is raised" .-> Bedrock["Amazon Bedrock<br/>Claude (eu inference profile)"]
 
   TenderS3 -- "Object Created" --> EB["Amazon EventBridge"]
   EB --> SFN
@@ -25,14 +29,14 @@ flowchart LR
     direction TB
     S1["Lambda start<br/>status EXTRACTING"] --> S4["Lambda extract<br/>validate PDF, pdf.js text layer per page"]
     S4 -- "pages without text (scans)" --> OCR["Claude on Bedrock<br/>transcribes page images"]
-    S4 --> S5["Lambda analyse<br/>Bedrock tool-use, structured JSON"]
+    S4 --> S5["Lambda analyse<br/>structured JSON via AI provider"]
     S5 --> S6["Save summary, checklist, risks<br/>status READY"]
     S1 & S4 & S5 -. "error" .-> SF["Lambda fail<br/>status FAILED + reason"]
   end
 
   S4 <--> TenderS3
   OCR <--> Bedrock
-  S5 <--> Bedrock
+  S5 <--> AI
   S6 --> DDB
   SFN --> CW["Amazon CloudWatch<br/>logs (IDs only), alarm on failed analyses"]
   ApiFn --> CW
@@ -66,6 +70,8 @@ flowchart LR
 | Amazon API Gateway (HTTP API) | REST endpoints, Cognito JWT authorizer, throttling, CORS | Managed authentication at the edge and low cost. |
 | Amazon DynamoDB | Hub, client and tender metadata, analysis results, checklist state | Single-table design keyed by hub, so tenant isolation comes from the key. On-demand billing. |
 | Amazon Cognito | Advisor sign-up, sign-in and email verification | Managed identity. JWTs are verified by API Gateway. |
+| AWS Systems Manager Parameter Store | Holds the Cloudflare Workers AI token as a SecureString | Keeps the credential out of code, templates and logs; Lambdas get read access to that one parameter only. |
+| Cloudflare Workers AI (temporary, outside AWS) | Tender analysis and Q&A while Bedrock has no quota | Free daily allowance (10,000 neurons, roughly 30 analyses a day), OpenAI-compatible API with JSON-schema output, and no training on customer data. |
 | Amazon CloudFront | HTTPS delivery of the SPA (with a Johannesburg edge) | Fast in South Africa, Origin Access Control keeps the bucket private, and security headers are added. |
 | AWS IAM | Least-privilege roles for each Lambda | Bedrock access is scoped to one model, and S3 grants go to specific prefixes. |
 | Amazon CloudWatch | Logs (2-week retention), alarm on failed analyses, X-Ray tracing on Step Functions | Troubleshooting without logging any document content. |

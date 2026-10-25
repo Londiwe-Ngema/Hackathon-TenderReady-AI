@@ -44,7 +44,23 @@ pnpm --filter @tenderready/infra cdk bootstrap        # once per account/region
 pnpm deploy                                           # builds the frontend, then deploys the stack
 ```
 
-Bedrock model: `eu.anthropic.claude-sonnet-5-5` (an EU cross-region inference profile; requests stay in EU regions). Amazon Textract is not available in eu-north-1, so the pipeline reads the PDF text layer in Lambda and has Claude transcribe scanned pages.
+### AI provider
+
+`infra/cdk.json` → `aiProvider`:
+- `workers-ai` (current): Cloudflare Workers AI, model `workersAiModelId` (`@cf/zai-org/glm-4.7-flash`). Needs the Cloudflare API token in SSM:
+  ```bash
+  read -s -p "Cloudflare token: " T && aws ssm put-parameter --name /tenderready/cloudflare-ai-token \
+    --type SecureString --value "$T" --overwrite && unset T
+  ```
+  The token needs the Workers AI permission and must belong to account `cloudflareAccountId`. Scanned PDFs aren't supported in this mode.
+- `bedrock`: Amazon Bedrock, model `bedrockModelId` (`eu.anthropic.claude-sonnet-5-5`). Use once the account has a Bedrock quota; Claude also transcribes scanned pages.
+
+Amazon Textract is not available in eu-north-1, so the pipeline reads the PDF text layer in Lambda.
+
+### CI/CD
+
+- **CI** (pull requests): typecheck, tests, frontend build, `cdk synth`.
+- **Deploy** (push to `main`, or run manually): CI, then `cdk deploy`. It uses the repository secrets `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY`, which belong to the IAM user `tenderready-github-deploy`. That user may only assume the CDK bootstrap roles.
 
 To use a different model: `pnpm --filter @tenderready/infra cdk deploy -c modelId=<inference-profile-id>`.
 

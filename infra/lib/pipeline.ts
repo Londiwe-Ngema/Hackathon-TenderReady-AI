@@ -8,13 +8,13 @@ import * as s3 from "aws-cdk-lib/aws-s3";
 import * as sfn from "aws-cdk-lib/aws-stepfunctions";
 import * as tasks from "aws-cdk-lib/aws-stepfunctions-tasks";
 import { Construct } from "constructs";
-import { grantBedrockInvoke } from "./bedrock";
+import { aiEnvironment, grantAi, type AiConfig } from "./ai-config";
 import { TsFunction, backendEntry } from "./fn";
 
 export interface PipelineProps {
   bucket: s3.Bucket;
   table: dynamodb.TableV2;
-  modelId: string;
+  ai: AiConfig;
 }
 
 /**
@@ -26,8 +26,8 @@ export class Pipeline extends Construct {
 
   constructor(scope: Construct, id: string, props: PipelineProps) {
     super(scope, id);
-    const { bucket, table, modelId } = props;
-    const environment = { TABLE_NAME: table.tableName, BUCKET_NAME: bucket.bucketName, BEDROCK_MODEL_ID: modelId };
+    const { bucket, table, ai } = props;
+    const environment = { TABLE_NAME: table.tableName, BUCKET_NAME: bucket.bucketName, ...aiEnvironment(ai) };
     const entry = backendEntry("pipeline/handlers.ts");
     const fn = (name: string, handler: string, extra: Partial<ConstructorParameters<typeof TsFunction>[2]> = {}) =>
       new TsFunction(this, name, { entry, handler, environment, description: `TenderReady pipeline: ${handler}`, ...extra });
@@ -41,9 +41,9 @@ export class Pipeline extends Construct {
     bucket.grantRead(extractFn, "hubs/*");
     bucket.grantWrite(extractFn, "extracted/*");
     bucket.grantRead(analyseFn, "extracted/*");
-    // extract: Claude transcribes scanned pages; analyse: structured tender analysis
-    grantBedrockInvoke(extractFn, Stack.of(this), modelId);
-    grantBedrockInvoke(analyseFn, Stack.of(this), modelId);
+    // extract: Claude transcribes scanned pages (Bedrock provider only); analyse: structured tender analysis
+    grantAi(extractFn, Stack.of(this), ai);
+    grantAi(analyseFn, Stack.of(this), ai);
 
     const throttling = ["ThrottlingException", "ServiceUnavailableException", "ServiceQuotaExceededException", "ModelNotReadyException"];
     const invoke = (name: string, f: TsFunction) =>
@@ -59,8 +59,8 @@ export class Pipeline extends Construct {
     const withCatch = (task: sfn.TaskStateBase) => task.addCatch(markFailed, { resultPath: "$.error" });
 
     const definition = withCatch(invoke("Mark extracting", startFn))
-      .next(withCatch(invoke("Extract text (PDF text layer + Claude for scans)", extractFn)))
-      .next(withCatch(invoke("Analyse with Bedrock", analyseFn)))
+      .next(withCatch(invoke("Extract text (PDF text layer + AI for scans)", extractFn)))
+      .next(withCatch(invoke("Analyse with AI", analyseFn)))
       .next(new sfn.Succeed(this, "Ready"));
 
     this.stateMachine = new sfn.StateMachine(this, "AnalyseTender", {

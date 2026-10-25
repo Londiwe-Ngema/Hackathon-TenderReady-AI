@@ -17,7 +17,21 @@ export const ANALYSIS_TOOL_SCHEMA = {
   properties: {
     summary: {
       type: "object",
-      required: ["title", "overview"],
+      required: [
+        "title",
+        "reference",
+        "issuingEntity",
+        "closingDateText",
+        "closingDateTime",
+        "briefing",
+        "contractDuration",
+        "validityPeriod",
+        "submissionMethod",
+        "submissionAddress",
+        "evaluation",
+        "overview",
+        "sourcePages",
+      ],
       properties: {
         title: nullableString,
         reference: nullableString,
@@ -26,6 +40,7 @@ export const ANALYSIS_TOOL_SCHEMA = {
         closingDateTime: { ...nullableString, description: "ISO 8601 with +02:00 offset, or null" },
         briefing: {
           type: "object",
+          required: ["compulsory", "dateTime", "venue"],
           properties: {
             compulsory: { type: ["boolean", "null"] },
             dateTime: nullableString,
@@ -38,6 +53,7 @@ export const ANALYSIS_TOOL_SCHEMA = {
         submissionAddress: nullableString,
         evaluation: {
           type: "object",
+          required: ["preferenceSystem", "functionalityThreshold", "criteria"],
           properties: {
             preferenceSystem: nullableString,
             functionalityThreshold: nullableString,
@@ -56,7 +72,7 @@ export const ANALYSIS_TOOL_SCHEMA = {
       type: "array",
       items: {
         type: "object",
-        required: ["category", "requirement", "mandatory", "origin"],
+        required: ["category", "requirement", "mandatory", "sourcePages", "sourceQuote", "origin"],
         properties: {
           category: { type: "string", enum: [...CHECKLIST_CATEGORIES] },
           requirement: { type: "string" },
@@ -71,7 +87,7 @@ export const ANALYSIS_TOOL_SCHEMA = {
       type: "array",
       items: {
         type: "object",
-        required: ["title", "severity", "explanation"],
+        required: ["title", "severity", "explanation", "sourcePages", "sourceQuote"],
         properties: {
           title: { type: "string" },
           severity: { type: "string", enum: ["high", "medium", "low"] },

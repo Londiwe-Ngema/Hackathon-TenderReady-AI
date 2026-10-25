@@ -1,8 +1,13 @@
 {
   "app": "npx tsx bin/tenderready.ts",
   "context": {
+    "account": "753695657671",
     "region": "eu-north-1",
-    "modelId": "eu.anthropic.claude-sonnet-5-5",
+    "aiProvider": "workers-ai",
+    "bedrockModelId": "eu.anthropic.claude-sonnet-5-5",
+    "workersAiModelId": "@cf/zai-org/glm-4.7-flash",
+    "cloudflareAccountId": "c2db456075f9ab9579ff7bb76674a984",
+    "cloudflareTokenParam": "/tenderready/cloudflare-ai-token",
     "@aws-cdk/aws-lambda-nodejs:useLatestRuntimeVersion": true
   }
 }
