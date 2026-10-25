@@ -6,99 +6,136 @@ import {
   type TenderSummary,
 } from "@tenderready/shared";
 
-export const ANALYSIS_TOOL_NAME = "record_tender_analysis";
+export const MAX_CHECKLIST_ITEMS = 40;
+export const MAX_RISKS = 12;
+const MAX_QUOTE = 200;
 
 const nullableString = { type: ["string", "null"] };
 const pages = { type: "array", items: { type: "integer" } };
+const quote = { type: ["string", "null"], maxLength: MAX_QUOTE };
 
-export const ANALYSIS_TOOL_SCHEMA = {
+const SUMMARY_SCHEMA = {
   type: "object",
-  required: ["summary", "checklist", "risks"],
+  required: [
+    "title",
+    "reference",
+    "issuingEntity",
+    "closingDateText",
+    "closingDateTime",
+    "briefing",
+    "contractDuration",
+    "validityPeriod",
+    "submissionMethod",
+    "submissionAddress",
+    "evaluation",
+    "overview",
+    "sourcePages",
+  ],
   properties: {
-    summary: {
+    title: nullableString,
+    reference: nullableString,
+    issuingEntity: nullableString,
+    closingDateText: nullableString,
+    closingDateTime: { ...nullableString, description: "ISO 8601 with +02:00 offset, or null" },
+    briefing: {
       type: "object",
-      required: [
-        "title",
-        "reference",
-        "issuingEntity",
-        "closingDateText",
-        "closingDateTime",
-        "briefing",
-        "contractDuration",
-        "validityPeriod",
-        "submissionMethod",
-        "submissionAddress",
-        "evaluation",
-        "overview",
-        "sourcePages",
-      ],
+      required: ["compulsory", "dateTime", "venue"],
       properties: {
-        title: nullableString,
-        reference: nullableString,
-        issuingEntity: nullableString,
-        closingDateText: nullableString,
-        closingDateTime: { ...nullableString, description: "ISO 8601 with +02:00 offset, or null" },
-        briefing: {
-          type: "object",
-          required: ["compulsory", "dateTime", "venue"],
-          properties: {
-            compulsory: { type: ["boolean", "null"] },
-            dateTime: nullableString,
-            venue: nullableString,
-          },
-        },
-        contractDuration: nullableString,
-        validityPeriod: nullableString,
-        submissionMethod: nullableString,
-        submissionAddress: nullableString,
-        evaluation: {
-          type: "object",
-          required: ["preferenceSystem", "functionalityThreshold", "criteria"],
-          properties: {
-            preferenceSystem: nullableString,
-            functionalityThreshold: nullableString,
-            criteria: { type: "array", items: { type: "string" } },
-          },
-        },
-        overview: { type: "string" },
-        sourcePages: {
-          type: "object",
-          description: "Map of summary field name to the pages it was found on, e.g. {\"closingDateText\":[1]}",
-          additionalProperties: pages,
-        },
+        compulsory: { type: ["boolean", "null"] },
+        dateTime: nullableString,
+        venue: nullableString,
       },
     },
-    checklist: {
-      type: "array",
-      items: {
-        type: "object",
-        required: ["category", "requirement", "mandatory", "sourcePages", "sourceQuote", "origin"],
-        properties: {
-          category: { type: "string", enum: [...CHECKLIST_CATEGORIES] },
-          requirement: { type: "string" },
-          mandatory: { type: "boolean" },
-          sourcePages: pages,
-          sourceQuote: nullableString,
-          origin: { type: "string", enum: ["document", "common_sa_practice"] },
-        },
+    contractDuration: nullableString,
+    validityPeriod: nullableString,
+    submissionMethod: nullableString,
+    submissionAddress: nullableString,
+    evaluation: {
+      type: "object",
+      required: ["preferenceSystem", "functionalityThreshold", "criteria"],
+      properties: {
+        preferenceSystem: nullableString,
+        functionalityThreshold: nullableString,
+        criteria: { type: "array", items: { type: "string" }, maxItems: 10 },
       },
     },
-    risks: {
-      type: "array",
-      items: {
-        type: "object",
-        required: ["title", "severity", "explanation", "sourcePages", "sourceQuote"],
-        properties: {
-          title: { type: "string" },
-          severity: { type: "string", enum: ["high", "medium", "low"] },
-          explanation: { type: "string" },
-          sourcePages: pages,
-          sourceQuote: nullableString,
-        },
-      },
+    overview: { type: "string", maxLength: 1200 },
+    sourcePages: {
+      type: "object",
+      description: 'Map of summary field name to the pages it was found on, e.g. {"closingDateText":[1]}',
+      additionalProperties: pages,
     },
   },
-} as const;
+};
+
+const CHECKLIST_ITEM_SCHEMA = {
+  type: "object",
+  required: ["category", "requirement", "mandatory", "sourcePages", "sourceQuote", "origin"],
+  properties: {
+    category: { type: "string", enum: [...CHECKLIST_CATEGORIES] },
+    requirement: { type: "string", maxLength: 250 },
+    mandatory: { type: "boolean" },
+    sourcePages: pages,
+    sourceQuote: quote,
+    origin: { type: "string", enum: ["document", "common_sa_practice"] },
+  },
+};
+
+const RISK_ITEM_SCHEMA = {
+  type: "object",
+  required: ["title", "severity", "explanation", "sourcePages", "sourceQuote"],
+  properties: {
+    title: { type: "string", maxLength: 120 },
+    severity: { type: "string", enum: ["high", "medium", "low"] },
+    explanation: { type: "string", maxLength: 400 },
+    sourcePages: pages,
+    sourceQuote: quote,
+  },
+};
+
+export interface AnalysisPart {
+  key: "summary" | "checklist" | "risks";
+  schemaName: string;
+  schema: Record<string, unknown>;
+  instruction: string;
+  maxTokens: number;
+}
+
+/**
+ * The analysis is split into three independent calls that run in parallel. Each has a small, bounded
+ * output, so long tenders can't produce one oversized answer that is cut off or times out.
+ */
+export const ANALYSIS_PARTS: AnalysisPart[] = [
+  {
+    key: "summary",
+    schemaName: "record_tender_summary",
+    schema: { type: "object", required: ["summary"], properties: { summary: SUMMARY_SCHEMA } },
+    instruction: "Record the tender summary: key details, the evaluation approach and a plain-language overview.",
+    maxTokens: 3_000,
+  },
+  {
+    key: "checklist",
+    schemaName: "record_compliance_checklist",
+    schema: {
+      type: "object",
+      required: ["checklist"],
+      properties: { checklist: { type: "array", items: CHECKLIST_ITEM_SCHEMA, maxItems: MAX_CHECKLIST_ITEMS } },
+    },
+    instruction: `Record the compliance checklist: every document, form, registration or action a bidder must provide or complete. Combine closely related items so there are at most ${MAX_CHECKLIST_ITEMS} items, list mandatory items first, and keep each sourceQuote under ${MAX_QUOTE} characters.`,
+    maxTokens: 8_000,
+  },
+  {
+    key: "risks",
+    schemaName: "record_disqualification_risks",
+    schema: {
+      type: "object",
+      required: ["risks"],
+      properties: { risks: { type: "array", items: RISK_ITEM_SCHEMA, maxItems: MAX_RISKS } },
+    },
+    instruction: `Record the conditions that could get a bid disqualified or marked non-responsive. At most ${MAX_RISKS} risks, most severe first, each sourceQuote under ${MAX_QUOTE} characters.`,
+    maxTokens: 3_000,
+  },
+];
 
 export interface AnalysisResult {
   summary: TenderSummary;
@@ -157,6 +194,7 @@ export function normaliseAnalysis(raw: unknown, maxPage: number): AnalysisResult
   };
 
   const checklist: ChecklistItem[] = (Array.isArray(r.checklist) ? r.checklist : [])
+    .slice(0, MAX_CHECKLIST_ITEMS)
     .map(obj)
     .filter((c) => str(c.requirement))
     .map((c, i) => {
@@ -175,6 +213,7 @@ export function normaliseAnalysis(raw: unknown, maxPage: number): AnalysisResult
 
   const severities = ["high", "medium", "low"] as const;
   const risks: Risk[] = (Array.isArray(r.risks) ? r.risks : [])
+    .slice(0, MAX_RISKS)
     .map(obj)
     .filter((x) => str(x.title))
     .map((x, i) => ({

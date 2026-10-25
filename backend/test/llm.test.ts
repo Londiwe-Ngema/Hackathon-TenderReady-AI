@@ -64,7 +64,7 @@ describe("workersAiProvider", () => {
     vi.unstubAllGlobals();
   });
 
-  it("calls the OpenAI-compatible endpoint with the token, document and JSON schema", async () => {
+  it("calls the OpenAI-compatible endpoint with the token, document, JSON mode and the schema in the prompt", async () => {
     fetchMock.mockResolvedValueOnce(ok('{"summary":{}}'));
     const out = await workersAiProvider("@cf/test/model").structured(req);
     expect(out).toEqual({ summary: {} });
@@ -74,13 +74,21 @@ describe("workersAiProvider", () => {
     const body = JSON.parse(init.body);
     expect(body.model).toBe("@cf/test/model");
     expect(body.messages[0].content).toContain("<document>");
-    expect(body.response_format).toEqual({ type: "json_schema", json_schema: { name: "rec", schema: { type: "object" } } });
+    expect(body.response_format).toEqual({ type: "json_object" });
+    expect(body.messages[1].content).toContain('{"type":"object"}');
   });
 
-  it("falls back to json_object mode when the schema is rejected", async () => {
-    fetchMock.mockResolvedValueOnce(new Response("unsupported schema", { status: 400 })).mockResolvedValueOnce(ok("```json\n{\"ok\":true}\n```"));
+  it("retries without a format constraint when JSON mode is rejected", async () => {
+    fetchMock.mockResolvedValueOnce(new Response("unsupported", { status: 400 })).mockResolvedValueOnce(ok("```json\n{\"ok\":true}\n```"));
     expect(await workersAiProvider("m").structured(req)).toEqual({ ok: true });
-    expect(JSON.parse(fetchMock.mock.calls[1][1].body).response_format).toEqual({ type: "json_object" });
+    expect(JSON.parse(fetchMock.mock.calls[1][1].body).response_format).toBeUndefined();
+  });
+
+  it("salvages complete items from an answer cut off at the output limit", async () => {
+    fetchMock.mockResolvedValueOnce(
+      new Response(JSON.stringify({ choices: [{ message: { content: '{"checklist":[{"a":1},{"a":2},{"a":' }, finish_reason: "length" }] }), { status: 200 }),
+    );
+    expect(await workersAiProvider("m").structured(req)).toEqual({ checklist: [{ a: 1 }, { a: 2 }] });
   });
 
   it("explains an exhausted daily allowance and marks plain 429s as retryable throttling", async () => {

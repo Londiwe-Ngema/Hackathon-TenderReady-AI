@@ -92,6 +92,8 @@ export async function fail(input: {
     else if (input.error?.Error === "States.Timeout") reason = "Analysis took too long. Large tenders may need to be split.";
     else if (cause.errorType === "AccessDeniedException") reason = "The AI service is not available for this account yet. Please try again later.";
     else if (cause.errorType === "ThrottlingException") reason = "The AI service is busy. Please try again in a few minutes.";
+    else if (cause.errorType === "ModelTimeoutError")
+      reason = "The AI took too long on this document. Please try again; very long tenders may need to be split into parts.";
   } catch {
     /* keep default reason */
   }

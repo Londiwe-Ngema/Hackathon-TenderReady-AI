@@ -2,7 +2,7 @@ import { InvokeModelCommand } from "@aws-sdk/client-bedrock-runtime";
 import { PDFDocument } from "pdf-lib";
 import { extractText, getDocumentProxy } from "unpdf";
 import { bedrock } from "./aws";
-import type { ExtractedDocument, PageText } from "./document-text";
+import { stripRepeatedLines, type ExtractedDocument, type PageText } from "./document-text";
 import { env } from "./env";
 import { UserFacingError } from "./errors";
 
@@ -107,7 +107,7 @@ export async function extractPdf(
         "This looks like a scanned PDF (most pages are images). Scanned tenders aren't supported in the current AI mode. Please upload a text-based PDF.",
       );
     }
-    return { pageCount: pages.length, pages, ocrPages: [], unreadablePages: scans };
+    return { pageCount: pages.length, pages: stripRepeatedLines(pages), ocrPages: [], unreadablePages: scans };
   }
 
   if (scans.length > MAX_OCR_PAGES) {
@@ -123,5 +123,5 @@ export async function extractPdf(
       for (const r of results.flat()) pages[r.page - 1] = r;
     }
   }
-  return { pageCount: pages.length, pages, ocrPages: scans, unreadablePages: [] };
+  return { pageCount: pages.length, pages: stripRepeatedLines(pages), ocrPages: scans, unreadablePages: [] };
 }

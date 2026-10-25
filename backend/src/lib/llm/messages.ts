@@ -34,3 +34,43 @@ export function extractJson(text: string): unknown {
     throw new Error("Model output did not contain valid JSON");
   }
 }
+
+/**
+ * Recovers a JSON answer that was cut off by the output-token limit: keeps everything up to the last
+ * complete array element and closes the open brackets. Returns undefined if nothing usable remains.
+ */
+export function salvageTruncatedJson(text: string): unknown {
+  const start = text.indexOf("{");
+  if (start < 0) return undefined;
+  const stack: string[] = [];
+  let inString = false;
+  let escaped = false;
+  let best: { end: number; open: string[] } | undefined;
+  for (let i = start; i < text.length; i++) {
+    const ch = text[i];
+    if (inString) {
+      if (escaped) escaped = false;
+      else if (ch === "\\") escaped = true;
+      else if (ch === '"') inString = false;
+      continue;
+    }
+    if (ch === '"') inString = true;
+    else if (ch === "{" || ch === "[") stack.push(ch);
+    else if (ch === "}" || ch === "]") {
+      stack.pop();
+      // An element inside an array just finished: a safe place to cut.
+      if (stack[stack.length - 1] === "[") best = { end: i + 1, open: [...stack] };
+      if (stack.length === 0) return JSON.parse(text.slice(start, i + 1));
+    }
+  }
+  if (!best) return undefined;
+  const closers = best.open
+    .reverse()
+    .map((b) => (b === "[" ? "]" : "}"))
+    .join("");
+  try {
+    return JSON.parse(text.slice(start, best.end) + closers);
+  } catch {
+    return undefined;
+  }
+}
