@@ -60,7 +60,7 @@ export function Clients() {
             {rows.map((c) => {
               const closing = closingLabel(c.nextClosingDate);
               return (
-                <Link key={c.clientId} to={`/clients/${c.clientId}`} className="card group flex flex-col gap-3 p-4 transition hover:border-brand-500/40 hover:shadow">
+                <Link key={c.clientId} to={`/clients/${c.clientId}`} className="card group flex flex-col gap-3 p-4 transition hover:border-brand-600">
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
                       <p className="truncate font-semibold text-navy-900">{c.name}</p>

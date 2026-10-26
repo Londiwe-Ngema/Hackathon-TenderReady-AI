@@ -104,14 +104,14 @@ export function ChecklistTab({ tender, onOpen }: { tender: Tender; onOpen: (p: n
           <ProgressBar value={progress} />
           <p className="mt-1 text-xs text-slate-500">Tracks checklist completion only. It is not a measure of eligibility or of the chance of winning.</p>
         </div>
-        <div className="flex gap-1 rounded-lg bg-slate-100 p-1 text-sm" role="tablist" aria-label="Filter checklist">
+        <div className="flex border border-brand-600 text-sm" role="tablist" aria-label="Filter checklist">
           {(["all", "mandatory", "open"] as Filter[]).map((f) => (
             <button
               key={f}
               role="tab"
               aria-selected={filter === f}
               onClick={() => setFilter(f)}
-              className={cx("rounded-md px-3 py-1 capitalize", filter === f ? "bg-white font-medium text-navy-900 shadow-sm" : "text-slate-600")}
+              className={cx("px-3 py-1.5 font-nav text-xs font-bold uppercase tracking-wide", filter === f ? "bg-brand-600 text-white" : "bg-white text-brand-600 hover:bg-brand-50")}
             >
               {f}
             </button>
@@ -121,8 +121,8 @@ export function ChecklistTab({ tender, onOpen }: { tender: Tender; onOpen: (p: n
 
       {groups.map((g) => (
         <section key={g.cat} className="card overflow-hidden">
-          <h3 className="border-b border-slate-100 bg-slate-50 px-4 py-2 text-sm font-semibold text-navy-900">
-            {g.cat} <span className="font-normal text-slate-500">({g.items.length})</span>
+          <h3 className="border-b border-[#dfe3e4] bg-brand-600 px-4 py-2 text-sm font-bold uppercase tracking-wide text-white">
+            {g.cat} <span className="font-normal text-white/75">({g.items.length})</span>
           </h3>
           <ul className="divide-y divide-slate-100">
             {g.items.map((i) => (

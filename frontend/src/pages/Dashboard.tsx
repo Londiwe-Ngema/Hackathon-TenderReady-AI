@@ -43,7 +43,7 @@ export function Dashboard() {
       </div>
 
       <section className="mt-8">
-        <h2 className="mb-3 text-lg font-semibold text-navy-900">Upcoming deadlines</h2>
+        <h2 className="title-rule mb-5 text-xl uppercase text-navy-900">Upcoming deadlines</h2>
         {upcoming.length === 0 ? (
           <EmptyState
             title="No active tenders yet"

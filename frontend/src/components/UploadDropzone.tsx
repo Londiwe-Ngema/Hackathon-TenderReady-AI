@@ -55,7 +55,7 @@ export function UploadDropzone({ onUpload }: { onUpload: (file: File, onProgress
         tabIndex={0}
         aria-label="Choose a tender PDF to upload"
         className={cx(
-          "flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed px-6 py-8 text-center transition",
+          "flex cursor-pointer flex-col items-center justify-center border-2 border-dashed px-6 py-8 text-center transition",
           dragging ? "border-brand-500 bg-brand-50" : "border-slate-300 bg-slate-50 hover:border-brand-500 hover:bg-brand-50/50",
         )}
       >

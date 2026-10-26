@@ -83,7 +83,10 @@ export function AskPanel({ tender, onOpen }: { tender: Tender; onOpen: (p: numbe
     setBusy(true);
     try {
       const res = await api().ask(tender.tenderId, text, history);
-      setMessages((m) => [...m, { role: "assistant", text: res.answer, citations: res.citations }]);
+      // A malformed body (gateway timeout page, HTML fallback) would otherwise crash the render and blank the page.
+      if (typeof res?.answer !== "string") throw new Error("The assistant didn't return an answer. Please try again.");
+      const citations = Array.isArray(res.citations) ? res.citations : [];
+      setMessages((m) => [...m, { role: "assistant", text: res.answer, citations }]);
     } catch (err) {
       setMessages((m) => [...m, { role: "assistant", text: err instanceof Error ? err.message : "Something went wrong.", error: true }]);
     } finally {
@@ -100,7 +103,7 @@ export function AskPanel({ tender, onOpen }: { tender: Tender; onOpen: (p: numbe
     <div className="card flex flex-col overflow-hidden">
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 px-4 py-3">
         <div>
-          <h3 className="font-semibold text-navy-900">Ask TenderReady</h3>
+          <h3 className="font-bold uppercase tracking-wide text-navy-900">Ask TenderReady</h3>
           <p className="text-xs text-slate-500">Answers come only from this tender document and cite the pages they are based on.</p>
         </div>
         {demoMode && <SimulatedLabel>Simulated answers (demo)</SimulatedLabel>}
@@ -112,7 +115,7 @@ export function AskPanel({ tender, onOpen }: { tender: Tender; onOpen: (p: numbe
             <p className="mb-3 text-sm text-slate-600">Try one of these questions:</p>
             <div className="flex flex-wrap gap-2">
               {SUGGESTED.map((s) => (
-                <button key={s} onClick={() => ask(s)} className="rounded-full border border-brand-100 bg-brand-50 px-3 py-1.5 text-left text-sm text-brand-700 hover:bg-brand-100">
+                <button key={s} onClick={() => ask(s)} className="border border-brand-600 bg-white px-3 py-1.5 text-left text-sm text-brand-600 hover:bg-brand-600 hover:text-white">
                   {s}
                 </button>
               ))}
@@ -121,13 +124,13 @@ export function AskPanel({ tender, onOpen }: { tender: Tender; onOpen: (p: numbe
         )}
         {messages.map((m, i) => (
           <div key={i} className={cx("flex gap-3", m.role === "user" && "flex-row-reverse")}>
-            <span className={cx("flex h-8 w-8 shrink-0 items-center justify-center rounded-full", m.role === "user" ? "bg-navy-900 text-white" : "bg-brand-50 text-brand-600")}>
+            <span className={cx("flex h-8 w-8 shrink-0 items-center justify-center", m.role === "user" ? "bg-navy-900 text-white" : "bg-brand-600 text-white")}>
               {m.role === "user" ? <User className="h-4 w-4" /> : <Bot className="h-4 w-4" />}
             </span>
             <div
               className={cx(
-                "max-w-[85%] rounded-2xl px-4 py-2.5 text-sm",
-                m.role === "user" ? "bg-navy-900 text-white" : m.error ? "bg-red-50 text-red-800" : "bg-slate-100 text-slate-800",
+                "max-w-[85%] px-4 py-2.5 text-sm",
+                m.role === "user" ? "bg-brand-600 text-white" : m.error ? "border-l-4 border-red-700 bg-red-50 text-red-800" : "border-l-4 border-accent-500 bg-[#f5f5f5] text-slate-800",
               )}
             >
               {m.role === "user" ? m.text : <Answer text={m.text} onOpen={onOpen} />}
@@ -141,8 +144,8 @@ export function AskPanel({ tender, onOpen }: { tender: Tender; onOpen: (p: numbe
         ))}
         {busy && (
           <div className="flex gap-3">
-            <span className="flex h-8 w-8 items-center justify-center rounded-full bg-brand-50 text-brand-600"><Bot className="h-4 w-4" /></span>
-            <div className="flex items-center gap-1 rounded-2xl bg-slate-100 px-4 py-3" aria-label="Thinking">
+            <span className="flex h-8 w-8 items-center justify-center bg-brand-600 text-white"><Bot className="h-4 w-4" /></span>
+            <div className="flex items-center gap-1 bg-[#f5f5f5] px-4 py-3" aria-label="Thinking">
               {[0, 150, 300].map((d) => (
                 <span key={d} className="h-2 w-2 animate-bounce rounded-full bg-slate-400" style={{ animationDelay: `${d}ms` }} />
               ))}

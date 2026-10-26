@@ -34,7 +34,7 @@ export function TenderReport() {
         <>
           Compliance checklist
           {openMandatoryCount(t.checklist) > 0 && (
-            <span className="ml-1.5 rounded-full bg-amber-100 px-1.5 text-xs text-amber-800">{openMandatoryCount(t.checklist)}</span>
+            <span className="ml-1.5 bg-accent-500 px-1.5 text-[11px] text-white">{openMandatoryCount(t.checklist)}</span>
           )}
         </>
       ),
@@ -45,7 +45,7 @@ export function TenderReport() {
         <>
           Disqualification risks
           {(t.risks?.filter((r) => r.severity === "high").length ?? 0) > 0 && (
-            <span className="ml-1.5 rounded-full bg-red-100 px-1.5 text-xs text-red-700">{t.risks!.filter((r) => r.severity === "high").length}</span>
+            <span className="ml-1.5 bg-red-700 px-1.5 text-[11px] text-white">{t.risks!.filter((r) => r.severity === "high").length}</span>
           )}
         </>
       ),
@@ -88,7 +88,7 @@ export function TenderReport() {
       />
 
       {notice && (
-        <div className="mb-4 rounded-lg bg-navy-900 px-4 py-2 text-sm text-white" role="status">
+        <div className="mb-4 border-l-4 border-accent-500 bg-navy-900 px-4 py-2 text-sm text-white" role="status">
           {notice}
         </div>
       )}
@@ -119,8 +119,8 @@ export function TenderReport() {
                   aria-selected={tab === x.id}
                   onClick={() => setParams({ tab: x.id }, { replace: true })}
                   className={cx(
-                    "-mb-px flex items-center border-b-2 px-4 py-2.5 text-sm font-medium transition",
-                    tab === x.id ? "border-brand-600 text-brand-700" : "border-transparent text-slate-500 hover:text-slate-800",
+                    "-mb-px flex items-center border-b-[3px] px-4 py-3 font-nav text-[13px] font-bold uppercase tracking-wide transition",
+                    tab === x.id ? "border-accent-500 text-brand-600" : "border-transparent text-navy-900 hover:text-accent-500",
                   )}
                 >
                   {x.label}

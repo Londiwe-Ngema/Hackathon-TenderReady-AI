@@ -41,88 +41,126 @@ export function Layout({ user, onSignedOut }: { user: SessionUser; onSignedOut: 
   const hub = useHub();
   const navigate = useNavigate();
 
-  const nav = (
-    <nav className="flex flex-col gap-1">
-      {NAV.map((n) => (
-        <NavLink
-          key={n.to}
-          to={n.to}
-          end={n.end}
-          onClick={() => setOpen(false)}
-          className={({ isActive }) =>
-            cx(
-              "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition",
-              isActive ? "bg-white/10 text-white" : "text-slate-300 hover:bg-white/5 hover:text-white",
-            )
-          }
-        >
-          {n.icon}
-          {n.label}
-        </NavLink>
-      ))}
-    </nav>
-  );
+  async function handleSignOut() {
+    await signOut();
+    onSignedOut();
+    navigate("/");
+  }
 
-  const account = (
-    <div className="border-t border-white/10 pt-4">
-      <p className="truncate text-sm font-medium text-white">{hub.data?.hubName || "Your hub"}</p>
-      <p className="truncate text-xs text-slate-400">{user.name ? `${user.name} · ` : ""}{user.email}</p>
-      <button
-        className="mt-3 flex items-center gap-2 text-sm text-slate-300 hover:text-white"
-        onClick={async () => {
-          await signOut();
-          onSignedOut();
-          navigate("/");
-        }}
-      >
-        <LogOut className="h-4 w-4" /> Sign out
-      </button>
-    </div>
-  );
+  const link = ({ isActive }: { isActive: boolean }) =>
+    cx(
+      "flex items-center gap-2 border-b-[3px] font-nav text-[13px] font-bold uppercase tracking-wide transition",
+      isActive ? "border-accent-500 text-brand-600" : "border-transparent text-navy-900 hover:text-accent-500",
+    );
 
   return (
-    <div className="min-h-screen">
+    <div className="flex min-h-screen flex-col">
       <DemoBanner />
-      {/* Mobile header */}
-      <header className="no-print sticky top-0 z-30 flex items-center justify-between bg-navy-900 px-4 py-3 lg:hidden">
-        <Logo light />
-        <button className="rounded-lg p-2 text-white hover:bg-white/10" onClick={() => setOpen(true)} aria-label="Open menu">
-          <Menu className="h-5 w-5" />
-        </button>
-      </header>
-      {open && (
-        <div className="no-print fixed inset-0 z-40 bg-navy-950/60 lg:hidden" onClick={() => setOpen(false)}>
-          <aside className="flex h-full w-72 flex-col justify-between bg-navy-900 p-4" onClick={(e) => e.stopPropagation()}>
-            <div>
-              <div className="mb-6 flex items-center justify-between">
-                <Logo light />
-                <button className="rounded-lg p-2 text-white hover:bg-white/10" onClick={() => setOpen(false)} aria-label="Close menu">
-                  <X className="h-5 w-5" />
-                </button>
-              </div>
-              {nav}
-            </div>
-            {account}
-          </aside>
+
+      {/* Utility bar */}
+      <div className="no-print bg-brand-600 text-white">
+        <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-1.5 font-nav text-[13px] sm:px-6">
+          <span className="truncate">
+            <span className="font-bold">{hub.data?.hubName || "Your hub"}</span>
+            <span className="hidden text-white/75 sm:inline">
+              {" "}
+              · {user.name ? `${user.name} · ` : ""}
+              {user.email}
+            </span>
+          </span>
+          <button className="flex shrink-0 items-center gap-1.5 hover:text-accent-500" onClick={handleSignOut}>
+            <LogOut className="h-3.5 w-3.5" /> Sign out
+          </button>
         </div>
-      )}
-      <div className="flex">
-        <aside className="no-print sticky top-0 hidden h-screen w-64 shrink-0 flex-col justify-between bg-navy-900 p-5 lg:flex">
-          <div>
-            <div className="mb-8">
-              <Logo light />
-              <p className="mt-2 text-xs text-slate-400">Digital compliance officer for SMME hubs</p>
-            </div>
-            {nav}
-          </div>
-          {account}
-        </aside>
-        <main className="min-w-0 flex-1 px-4 py-6 sm:px-6 lg:px-10 lg:py-8">
-          <div className="mx-auto max-w-6xl">
-            <Outlet />
-          </div>
-        </main>
       </div>
+
+      {/* Main header */}
+      <header className="no-print sticky top-0 z-30 bg-white shadow-[0_0_20px_rgba(21,47,95,0.2)]">
+        <div className="mx-auto flex h-[76px] max-w-6xl items-center justify-between px-4 sm:px-6">
+          <NavLink to="/" aria-label="TenderReady home">
+            <Logo />
+          </NavLink>
+          <nav className="hidden h-full items-stretch gap-7 lg:flex">
+            {NAV.map((n) => (
+              <NavLink key={n.to} to={n.to} end={n.end} className={link}>
+                {n.label}
+              </NavLink>
+            ))}
+          </nav>
+          <button className="p-2 text-navy-900 hover:text-accent-500 lg:hidden" onClick={() => setOpen((o) => !o)} aria-label={open ? "Close menu" : "Open menu"} aria-expanded={open}>
+            {open ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+          </button>
+        </div>
+        {open && (
+          <nav className="border-t-4 border-accent-500 bg-white lg:hidden">
+            {NAV.map((n) => (
+              <NavLink
+                key={n.to}
+                to={n.to}
+                end={n.end}
+                onClick={() => setOpen(false)}
+                className={({ isActive }) =>
+                  cx(
+                    "flex items-center gap-3 border-b border-[#dfe3e4] px-4 py-3 font-nav text-[13px] font-bold uppercase tracking-wide",
+                    isActive ? "bg-brand-50 text-brand-600" : "text-navy-900",
+                  )
+                }
+              >
+                {n.icon}
+                {n.label}
+              </NavLink>
+            ))}
+          </nav>
+        )}
+      </header>
+
+      <main className="min-w-0 flex-1 py-8 lg:py-10">
+        <div className="mx-auto max-w-6xl px-4 sm:px-6">
+          <Outlet />
+        </div>
+      </main>
+
+      <SiteFooter />
     </div>
+  );
+}
+
+export function SiteFooter() {
+  return (
+    <footer className="no-print bg-footer text-[13px] leading-6 text-[#9a9a9a]">
+      <div className="mx-auto grid max-w-6xl gap-8 px-4 py-10 sm:px-6 md:grid-cols-[2fr_1fr_1fr]">
+        <div>
+          <h6 className="mb-3 font-nav text-sm font-bold uppercase tracking-wide text-white">About TenderReady</h6>
+          <p>
+            TenderReady helps SMME hubs, incubators and business support centres prepare compliant public-sector bids. It reads tender
+            documents and lists the forms, certificates and conditions each client needs. It supports bid preparation and does not
+            guarantee eligibility or award.
+          </p>
+        </div>
+        <div>
+          <h6 className="mb-3 font-nav text-sm font-bold uppercase tracking-wide text-white">Hub</h6>
+          <ul>
+            {NAV.map((n) => (
+              <li key={n.to}>
+                <NavLink to={n.to} end={n.end} className="hover:text-accent-500">
+                  {n.label}
+                </NavLink>
+              </li>
+            ))}
+          </ul>
+        </div>
+        <div>
+          <h6 className="mb-3 font-nav text-sm font-bold uppercase tracking-wide text-white">Useful links</h6>
+          <ul>
+            <li><a className="hover:text-accent-500" href="https://www.etenders.gov.za" target="_blank" rel="noreferrer">eTenders portal</a></li>
+            <li><a className="hover:text-accent-500" href="https://secure.csd.gov.za" target="_blank" rel="noreferrer">Central Supplier Database</a></li>
+            <li><a className="hover:text-accent-500" href="https://www.bizportal.gov.za" target="_blank" rel="noreferrer">BizPortal</a></li>
+          </ul>
+        </div>
+      </div>
+      <div className="border-t border-white/10">
+        <p className="mx-auto max-w-6xl px-4 py-4 text-xs sm:px-6">© {new Date().getFullYear()} TenderReady. All rights reserved.</p>
+      </div>
+    </footer>
   );
 }

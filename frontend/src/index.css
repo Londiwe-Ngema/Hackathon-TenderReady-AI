@@ -1,60 +1,105 @@
 @import "tailwindcss";
 
+/*
+ * Visual language follows South African government service portals (e.g. BizPortal):
+ * teal utility bar, white header with uppercase navigation, orange accent rules,
+ * squared corners, flat panels on a light grey page and a dark footer.
+ */
 @theme {
-  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-  --color-navy-950: #071428;
-  --color-navy-900: #0b1f3a;
-  --color-navy-800: #12305a;
-  --color-navy-700: #1a3f73;
-  --color-brand-50: #eff5ff;
-  --color-brand-100: #dbe8fe;
-  --color-brand-500: #2f6fed;
-  --color-brand-600: #1d5bd6;
-  --color-brand-700: #1748ad;
-  --color-ok-50: #ecfdf3;
-  --color-ok-500: #16a34a;
-  --color-ok-600: #15803d;
+  --font-sans: "Montserrat", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-heading: "Oswald", "Arial Narrow", sans-serif;
+  --font-nav: "Roboto", "Helvetica Neue", Arial, sans-serif;
+
+  /* "navy" is kept as the token name for dark ink so existing classes keep working. */
+  --color-navy-950: #111f29;
+  --color-navy-900: #222222;
+  --color-navy-800: #333333;
+  --color-navy-700: #444444;
+
+  /* Primary: government teal. */
+  --color-brand-50: #eef6f6;
+  --color-brand-100: #cfe5e6;
+  --color-brand-500: #4c9b9d;
+  --color-brand-600: #00727d;
+  --color-brand-700: #005961;
+
+  --color-accent-500: #ff9900;
+  --color-accent-600: #e68a00;
+
+  --color-ok-50: #eef8f0;
+  --color-ok-500: #3f9e55;
+  --color-ok-600: #2f7d42;
+
+  --color-footer: #26272b;
+  --color-page: #f5f5f5;
+
+  /* Squared-off corners throughout; rounded-full is left alone for dots and avatars. */
+  --radius-xs: 0px;
+  --radius-sm: 2px;
+  --radius-md: 2px;
+  --radius-lg: 2px;
+  --radius-xl: 3px;
+  --radius-2xl: 3px;
 }
 
 @layer base {
   body {
-    @apply bg-slate-100 text-slate-800 antialiased;
+    @apply bg-page text-[#555555] antialiased;
+  }
+  h1,
+  h2 {
+    font-family: var(--font-heading);
+    letter-spacing: 0.02em;
+  }
+  h1 {
+    @apply font-normal uppercase;
+  }
+  h2 {
+    @apply font-medium;
+  }
+  h3 {
+    font-family: var(--font-nav);
   }
   :focus-visible {
-    @apply outline-2 outline-offset-2 outline-brand-500;
+    @apply outline-2 outline-offset-2 outline-accent-500;
   }
 }
 
 @utility card {
-  @apply rounded-xl border border-slate-200 bg-white shadow-sm;
+  @apply border border-[#dfe3e4] bg-white;
+}
+
+/* Orange rule under section titles, as on the reference portal. */
+@utility title-rule {
+  @apply relative pb-4 after:absolute after:bottom-0 after:left-0 after:h-[5px] after:w-[60px] after:bg-accent-500 after:content-[''];
 }
 
 @utility btn {
-  @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition disabled:cursor-not-allowed disabled:opacity-50;
+  @apply inline-flex items-center justify-center gap-2 px-5 py-2.5 font-nav text-[13px] font-bold uppercase tracking-wide transition disabled:cursor-not-allowed disabled:opacity-50;
 }
 
 @utility btn-primary {
-  @apply btn bg-brand-600 text-white hover:bg-brand-700;
+  @apply btn bg-brand-600 text-white hover:bg-accent-500;
 }
 
 @utility btn-secondary {
-  @apply btn border border-slate-300 bg-white text-slate-700 hover:bg-slate-50;
+  @apply btn border border-brand-600 bg-white text-brand-600 hover:bg-brand-600 hover:text-white;
 }
 
 @utility btn-ghost {
-  @apply btn text-slate-600 hover:bg-slate-100;
+  @apply btn text-navy-900 hover:text-accent-500;
 }
 
 @utility btn-danger {
-  @apply btn border border-red-200 bg-white text-red-700 hover:bg-red-50;
+  @apply btn border border-red-700 bg-white text-red-700 hover:bg-red-700 hover:text-white;
 }
 
 @utility input {
-  @apply w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm placeholder:text-slate-400 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100;
+  @apply w-full border border-[#cfd6d9] bg-white px-3 py-2.5 text-sm text-navy-900 placeholder:text-slate-400 focus:border-brand-600 focus:outline-none focus:ring-1 focus:ring-brand-600;
 }
 
 @utility label {
-  @apply mb-1 block text-sm font-medium text-slate-700;
+  @apply mb-1.5 block font-nav text-xs font-bold uppercase tracking-wide text-navy-900;
 }
 
 @media print {
