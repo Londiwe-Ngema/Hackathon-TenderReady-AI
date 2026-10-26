@@ -2,7 +2,6 @@ import { CheckCircle2, ClipboardCheck, MessageSquareText, Users } from "lucide-r
 import { useState, type FormEvent } from "react";
 import { confirmSignUp, resendCode, signIn, signUp } from "../lib/auth";
 import { demoMode } from "../lib/config";
-import { SiteFooter } from "../components/Layout";
 import { Logo } from "../components/ui";
 
 type Mode = "signin" | "signup" | "confirm";
@@ -168,7 +167,6 @@ export function Login({ onSignedIn }: { onSignedIn: () => void }) {
         </div>
       </main>
 
-      <SiteFooter />
     </div>
   );
 }

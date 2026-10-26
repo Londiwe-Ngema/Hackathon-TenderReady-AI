@@ -120,47 +120,7 @@ export function Layout({ user, onSignedOut }: { user: SessionUser; onSignedOut: 
         </div>
       </main>
 
-      <SiteFooter />
     </div>
   );
 }
 
-export function SiteFooter() {
-  return (
-    <footer className="no-print bg-footer text-[13px] leading-6 text-[#9a9a9a]">
-      <div className="mx-auto grid max-w-6xl gap-8 px-4 py-10 sm:px-6 md:grid-cols-[2fr_1fr_1fr]">
-        <div>
-          <h6 className="mb-3 font-nav text-sm font-bold uppercase tracking-wide text-white">About TenderReady</h6>
-          <p>
-            TenderReady helps SMME hubs, incubators and business support centres prepare compliant public-sector bids. It reads tender
-            documents and lists the forms, certificates and conditions each client needs. It supports bid preparation and does not
-            guarantee eligibility or award.
-          </p>
-        </div>
-        <div>
-          <h6 className="mb-3 font-nav text-sm font-bold uppercase tracking-wide text-white">Hub</h6>
-          <ul>
-            {NAV.map((n) => (
-              <li key={n.to}>
-                <NavLink to={n.to} end={n.end} className="hover:text-accent-500">
-                  {n.label}
-                </NavLink>
-              </li>
-            ))}
-          </ul>
-        </div>
-        <div>
-          <h6 className="mb-3 font-nav text-sm font-bold uppercase tracking-wide text-white">Useful links</h6>
-          <ul>
-            <li><a className="hover:text-accent-500" href="https://www.etenders.gov.za" target="_blank" rel="noreferrer">eTenders portal</a></li>
-            <li><a className="hover:text-accent-500" href="https://secure.csd.gov.za" target="_blank" rel="noreferrer">Central Supplier Database</a></li>
-            <li><a className="hover:text-accent-500" href="https://www.bizportal.gov.za" target="_blank" rel="noreferrer">BizPortal</a></li>
-          </ul>
-        </div>
-      </div>
-      <div className="border-t border-white/10">
-        <p className="mx-auto max-w-6xl px-4 py-4 text-xs sm:px-6">© {new Date().getFullYear()} TenderReady. All rights reserved.</p>
-      </div>
-    </footer>
-  );
-}
